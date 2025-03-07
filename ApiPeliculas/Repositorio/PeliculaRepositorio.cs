@@ -57,23 +57,23 @@ namespace ApiPeliculas.Repositorio
 
         public bool ExistePelicula(int id)
         {
-            return _db.Categorias.Any(c => c.Id == id);
+            return _db.Peliculas.Any(p => p.Id == id);
         }
 
         public bool ExistePelicula(string Nombre)
         {
-            bool valor = _db.Categorias.Any(c => c.Nombre.ToLower().Trim() == Nombre.ToLower().Trim());
+            bool valor = _db.Peliculas.Any(p => p.Nombre.ToLower().Trim() == Nombre.ToLower().Trim());
             return valor;
         }
 
         public Pelicula GetPelicula(int PeliculaId)
         {
-            return _db.Peliculas.FirstOrDefault(c => c.Id == PeliculaId);
+            return _db.Peliculas.FirstOrDefault(p => p.Id == PeliculaId);
         }
 
         public ICollection<Pelicula> GetPeliculas()
         {
-            return _db.Peliculas.OrderBy(c => c.Nombre).ToList();
+            return _db.Peliculas.OrderBy(p => p.Nombre).ToList();
         }
 
         public ICollection<Pelicula> GetPeliculasEnCategoria(int catId)
