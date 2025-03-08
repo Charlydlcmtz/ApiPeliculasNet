@@ -1,8 +1,11 @@
 using ApiPeliculas.Data;
+using ApiPeliculas.Modelos;
 using ApiPeliculas.PeliculasMappers;
 using ApiPeliculas.Repositorio;
 using ApiPeliculas.Repositorio.IRepositorio;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -16,6 +19,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>( opciones => 
     opciones.UseSqlServer(builder.Configuration.GetConnectionString("ConexionSql")));
 
+//Soporte para autenticación con .NET Identity
+builder.Services.AddIdentity<AppUsuarios, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
+
 //Soporte para cache
 builder.Services.AddResponseCaching();
 
@@ -25,6 +31,28 @@ builder.Services.AddScoped<IPeliculaRepositorio, PeliculaRepositorio>();
 builder.Services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
 
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secreta");
+
+//Soporte para el versionamiento de la API
+var apiVersioningBuilder = builder.Services.AddApiVersioning(opcion =>
+    {
+        opcion.AssumeDefaultVersionWhenUnspecified = true;
+        opcion.DefaultApiVersion = new ApiVersion(1, 0);
+        opcion.ReportApiVersions = true;
+        //opcion.ApiVersionReader = ApiVersionReader.Combine( 
+        //    new QueryStringApiVersionReader("api-version")
+        //    //?api-version=1.0
+        //    //new HeaderApiVersionReader("X-Version"),
+        //    //new MediaTypeApiVersionReader("ver"));
+        //);
+    });
+
+apiVersioningBuilder.AddApiExplorer(
+        opciones =>
+        {
+            opciones.GroupNameFormat = "'v'VVV";
+            opciones.SubstituteApiVersionInUrl = true;
+        }
+    );
 
 //Agregamos el AutoMapper;
 builder.Services.AddAutoMapper(typeof(PeliculasMappper));
@@ -53,8 +81,9 @@ builder.Services.AddAuthentication
 builder.Services.AddControllers(opcion =>
 {
     //Cache Profile. Un cache global y asi no tener que ponerlo en todas partes.
-    opcion.CacheProfiles.Add("PorDefecto30Segundos", new CacheProfile() { Duration = 30 });
+    opcion.CacheProfiles.Add("PorDefecto30Segundos", new CacheProfile() { Duration = 10 });
 });
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -87,6 +116,42 @@ builder.Services.AddSwaggerGen(options =>
                 new List<string>()
             }
         });
+        options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Version = "v1.0",
+                Title = "Peliculas Api V1",
+                Description = "Api de Peliculas",
+                TermsOfService = new Uri("https://www.google.com"),
+                Contact = new OpenApiContact
+                {
+                    Name = "Charly",
+                    Url = new Uri("https://www.google.com")
+                },
+                License = new OpenApiLicense
+                {
+                    Name = "Licencia Personal",
+                    Url = new Uri("https://www.google.com")
+                }
+            }
+        );
+        options.SwaggerDoc("v2", new OpenApiInfo
+            {
+                Version = "v2.0",
+                Title = "Peliculas Api V2",
+                Description = "Api de Peliculas",
+                TermsOfService = new Uri("https://www.google.com"),
+                Contact = new OpenApiContact
+                {
+                    Name = "Charly",
+                    Url = new Uri("https://www.google.com")
+                },
+                License = new OpenApiLicense
+                {
+                    Name = "Licencia Personal",
+                    Url = new Uri("https://www.google.com")
+                }
+            }
+        );
     }
 );
 
@@ -108,9 +173,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(opciones =>
+    {
+        opciones.SwaggerEndpoint("/swagger/v1/swagger.json", "ApiPeliculaV1");
+        opciones.SwaggerEndpoint("/swagger/v2/swagger.json", "ApiPeliculaV2");
+    });
 }
 
+//Soporte para archivos estaticos como imagenes
+app.UseStaticFiles();
 app.UseHttpsRedirection();
 
 //Soporte para CORS

@@ -14,7 +14,9 @@ namespace ApiPeliculas.Modelos
 
         public int Duracion { get; set; }
 
-        public string RutaImagen { get; set; }
+        public string? RutaImagen { get; set; }
+
+        public string? RutaLocalImagen { get; set; }
 
         public enum TipoClasificacion { Siete, Trece, Dieciseis, Dieciocho }
 
