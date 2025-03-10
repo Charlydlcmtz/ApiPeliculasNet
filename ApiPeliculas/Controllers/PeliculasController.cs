@@ -29,18 +29,35 @@ namespace ApiPeliculas.Controllers
         [ResponseCache(Duration = 20)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public IActionResult GetPeliculas()
+        public IActionResult GetPeliculas([FromQuery] int pageNumber = 1, int pageSize = 10)
         {
-            var listaPeliculas = _pelRepo.GetPeliculas();
-
-            var listaPeliculasDto = new List<PeliculaDto>();
-
-            foreach (var lista in listaPeliculas)
+            try
             {
-                listaPeliculasDto.Add(_mapper.Map<PeliculaDto>(lista));
-            }
+                var totalPeliculas = _pelRepo.GetTotalPeliculas();
+                var peliculas = _pelRepo.GetPeliculas(pageNumber, pageSize);
 
-            return Ok(listaPeliculasDto);
+                if (peliculas == null || !peliculas.Any())
+                {
+                    return NotFound("No se encontraron películas");
+                }
+
+                var peliculasDto = peliculas.Select(p => _mapper.Map<PeliculaDto>(p)).ToList();
+
+                var response = new
+                {
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalPeliculas / (double)pageSize),
+                    TotalItems = totalPeliculas,
+                    items = peliculasDto
+                };
+
+                return Ok(response);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error recuperando datos de la aplicación");
+            }
         }
 
         [AllowAnonymous]
@@ -229,20 +246,27 @@ namespace ApiPeliculas.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public IActionResult GetPeliculasEnCategoria(int categoriaId)
         {
-            var listaPeliculas = _pelRepo.GetPeliculasEnCategoria(categoriaId);
-
-            if (listaPeliculas == null)
+            try
             {
-                return NotFound();
-            }
+                var listaPeliculas = _pelRepo.GetPeliculasEnCategoria(categoriaId);
 
-            var itemPelicula = new List<PeliculaDto>();
-            foreach (var pelicula in listaPeliculas)
+                if (listaPeliculas == null || !listaPeliculas.Any())
+                {
+                    return NotFound($"No se encontraron películas en la categoría con ID {categoriaId}.");
+                }
+
+                var itemPelicula = listaPeliculas.Select(pelicula => _mapper.Map<PeliculaDto>(pelicula)).ToList();
+                //foreach (var pelicula in listaPeliculas)
+                //{
+                //    itemPelicula.Add(_mapper.Map<PeliculaDto>(pelicula));
+                //}
+
+                return Ok(itemPelicula);
+            }
+            catch (Exception)
             {
-                itemPelicula.Add(_mapper.Map<PeliculaDto>(pelicula));
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error recuperando datos de la aplicación");
             }
-
-            return Ok(itemPelicula);
         }
 
         [AllowAnonymous]
@@ -254,13 +278,15 @@ namespace ApiPeliculas.Controllers
         public IActionResult BuscarPelicula(string nombre_pelicula)
         {
             try{
-                var resultado = _pelRepo.BuscarPelicula(nombre_pelicula);
-                if (resultado.Any()){
-                    return Ok(resultado);
+                var peliculas = _pelRepo.BuscarPelicula(nombre_pelicula);
+                if (!peliculas.Any()){
+                    return NotFound($"No se encontraron películas que coincidan con los criterios de búsqueda.");
                 }
 
-                return NotFound();
-            }catch (Exception){
+                var peliculasDto = _mapper.Map<IEnumerable<PeliculaDto>>(peliculas);
+                return Ok(peliculasDto);
+            }
+            catch (Exception){
                return StatusCode(StatusCodes.Status500InternalServerError, "Error recuperando datos de la aplicación");
             }
         }
